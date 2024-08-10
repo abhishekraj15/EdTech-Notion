@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react"
-import { AiOutlineMenu, AiOutlineShoppingCart } from "react-icons/ai"
-import { BsChevronDown } from "react-icons/bs"
-import { useSelector } from "react-redux"
-import { Link, matchPath, useLocation } from "react-router-dom"
+import { useEffect, useState } from "react";
+import { AiOutlineMenu, AiOutlineShoppingCart } from "react-icons/ai";
+import { BsChevronDown } from "react-icons/bs";
+import { useSelector } from "react-redux";
+import { Link, matchPath, useLocation } from "react-router-dom";
 
-import logo from "../../assets/Logo/Logo-Full-Light.png"
-import { NavbarLinks } from "../../data/navbar-links"
-import { apiConnector } from "../../services/apiConnector"
-import { categories } from "../../services/apis"
-import { ACCOUNT_TYPE } from "../../utils/constants"
-import ProfileDropdown from "../core/Auth/ProfileDropdown"
+
+
+import logo from "../../assets/Logo/Logo-Full-Light.png";
+import { NavbarLinks } from "../../data/navbar-links";
+import { apiConnector } from "../../services/apiConnector";
+import { categories } from "../../services/apis";
+import { ACCOUNT_TYPE } from "../../utils/constants";
+import ProfileDropdown from "../core/Auth/ProfileDropdown";
+
 
 // const subLinks = [
 //   {
@@ -38,13 +41,15 @@ function Navbar() {
 
   const [subLinks, setSubLinks] = useState([])
   const [loading, setLoading] = useState(false)
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
+
 
   useEffect(() => {
     ;(async () => {
       setLoading(true)
       try {
         const res = await apiConnector("GET", categories.CATEGORIES_API)
-        setSubLinks(res.data.data)
+        setSubLinks(res.data.data || [])
       } catch (error) {
         console.log("Could not fetch Categories.", error)
       }
@@ -57,6 +62,121 @@ function Navbar() {
   const matchRoute = (route) => {
     return matchPath({ path: route }, location.pathname)
   }
+
+  const handleMenuToggle = () => setIsMenuOpen((prev) => !prev)
+
+  const renderMobileMenu = () => (
+    <div
+      className={`fixed right-0 top-0 z-50 h-full w-3/4 transform bg-richblack-800 shadow-md transition-transform md:hidden ${
+        isMenuOpen ? "translate-x-0" : "translate-x-full"
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-richblack-700 p-4">
+        <img src={logo} alt="Logo" width={120} height={24} loading="lazy" />
+        <button onClick={handleMenuToggle}>
+          <AiOutlineMenu fontSize={24} fill="#AFB2BF" />
+        </button>
+      </div>
+      <div className="mt-4 flex flex-col space-y-4 px-4">
+        {NavbarLinks.map((link, index) => (
+          <div key={index}>
+            {link.title === "Catalog" ? (
+              <div
+                className="relative flex cursor-pointer items-center gap-1"
+                onClick={handleMenuToggle}
+              >
+                <p
+                  className={`${
+                    matchRoute("/catalog/:catalogName")
+                      ? "text-yellow-25"
+                      : "text-richblack-25"
+                  }`}
+                >
+                  {link.title}
+                </p>
+                <BsChevronDown />
+                <div className="absolute left-0 top-full mt-2 w-full rounded-lg bg-richblack-700 px-4 py-2 text-richblack-100">
+                  {loading ? (
+                    <p className="text-center">Loading...</p>
+                  ) : subLinks.length ? (
+                    subLinks
+                      ?.filter((subLink) => subLink?.courses?.length > 0)
+                      ?.map((subLink, i) => (
+                        <Link
+                          to={`/catalog/${subLink.name
+                            .split(" ")
+                            .join("-")
+                            .toLowerCase()}`}
+                          className="block rounded py-2 pl-4 hover:bg-richblack-600"
+                          key={i}
+                          onClick={handleMenuToggle}
+                        >
+                          {subLink.name}
+                        </Link>
+                      ))
+                  ) : (
+                    <button className="text-center w-max">No Courses Found</button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <Link
+                to={link?.path}
+                className={`block py-2 ${
+                  matchRoute(link?.path)
+                    ? "text-yellow-25"
+                    : "text-richblack-25"
+                }`}
+                onClick={handleMenuToggle}
+              >
+                {link.title}
+              </Link>
+            )}
+          </div>
+        ))}
+        {user && user?.accountType !== ACCOUNT_TYPE.INSTRUCTOR && (
+          <Link
+            to="/dashboard/cart"
+            onClick={handleMenuToggle}
+            className="flex items-center space-x-2 text-lg text-richblack-25"
+          >
+            <AiOutlineShoppingCart className="text-xl" />
+            {totalItems > 0 && (
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-richblack-600 text-xs font-bold text-yellow-100">
+                {totalItems}
+              </span>
+            )}
+            <span>Cart</span>
+          </Link>
+        )}
+        {token === null && (
+          <>
+            <Link
+              to="/login"
+              onClick={handleMenuToggle}
+              className="block text-lg text-richblack-25"
+            >
+              Log in
+            </Link>
+            <Link
+              to="/signup"
+              onClick={handleMenuToggle}
+              className="block text-lg text-richblack-25"
+            >
+              Sign up
+            </Link>
+          </>
+        )}
+        {token !== null && (
+          <ProfileDropdown
+            onClose={handleMenuToggle} // Assuming ProfileDropdown supports onClose
+          />
+        )}
+      </div>
+    </div>
+  )
+
+
 
   return (
     <div
@@ -159,9 +279,12 @@ function Navbar() {
           )}
           {token !== null && <ProfileDropdown />}
         </div>
-        <button className="mr-4 md:hidden">
+        <button className="mr-4 md:hidden" onClick={handleMenuToggle}>
           <AiOutlineMenu fontSize={24} fill="#AFB2BF" />
         </button>
+
+           {renderMobileMenu()}
+
       </div>
     </div>
   )
